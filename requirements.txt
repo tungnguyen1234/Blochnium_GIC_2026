@@ -1,0 +1,4 @@
+cupy
+pennylane
+torch 
+numpy
