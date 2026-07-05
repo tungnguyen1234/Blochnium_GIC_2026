@@ -2,3 +2,7 @@ cupy
 pennylane
 torch 
 numpy
+yfinance
+pandas_datareader
+statsmodels
+scikit-learn
