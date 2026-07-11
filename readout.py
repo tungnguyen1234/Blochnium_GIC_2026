@@ -57,7 +57,7 @@ class RidgeReadout:
         self._fitted = True
         return self.ridge_model.coef_ # W_out has dim 1 x d
     
-    def predict(self, W_out, obs, time_horizon = 0):
+    def predict(self, obs):
         """
         Args:
             obs: [in_dim] (mot buoc) hoac [N, in_dim] (batch).

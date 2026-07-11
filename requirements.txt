@@ -1,4 +1,4 @@
-cupy
+cupy-cuda12x
 pennylane
 torch 
 numpy

@@ -31,14 +31,18 @@ def download_data(ticker):
 
 def add_volatility_target_and_regime(df, alpha=ALPHA):
     df = df.copy()
-
     df["log_return"] = np.log(df["Close"] / df["Close"].shift(1))
-    df["RV"] = df["log_return"] ** 2
-    df["y"] = np.log(df["RV"] + EPS)
 
-    # next-day target
+    # Garman–Klass daily variance estimator
+    log_hl = np.log(df["High"] / df["Low"])
+    log_co = np.log(df["Close"] / df["Open"])
+    df["RV"] = 0.5 * log_hl**2 - (2 * np.log(2) - 1) * log_co**2
+
+    # drop degenerate days (halts / bad rows) instead of eps-flooring
+    df = df[df["RV"] > 1e-12].copy()
+    df["y"] = np.log(df["RV"])          # no EPS crutch needed anymore
+
     df["y_next"] = df["y"].shift(-1)
-
     df = df.dropna()
 
     train_end = int(len(df) * TRAIN_RATIO)
@@ -73,5 +77,4 @@ final = final.reset_index().rename(columns={"Date": "date"})
 final.to_csv("regime_label_dataset.csv", index=False)
 
 print(final.head())
-breakpoint()
 print(final.shape)

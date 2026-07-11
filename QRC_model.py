@@ -6,9 +6,10 @@ import torch.nn as nn
 from readout import RidgeReadout
 import pennylane as qml
 from copy import deepcopy
+from tqdm import tqdm
         
 class QRC_Model(nn.Module):
-    def __init__(self, num_qubits=0, crc_size=0, use_gpu=False, backends=None, f_bs=[0.1], b=-0.31, ridge_param=1.e-6, seed =0):
+    def __init__(self, num_qubits=0, backends=None, ridge_param=1.e-6, f_bs=(0.1,), dt=0.1,  seed=0):
         """The Onion Classical Quantum Reservoir Computing Model
         
         HAR + QRC residual architecture (Layer 5):
@@ -23,28 +24,25 @@ class QRC_Model(nn.Module):
             use_classical(bool): Whether to include a classical reservoir
             use_quantum(bool): Whether to include the quantum reservoir(s)
             backends(List(Backend)): The number of backends determines the number of quantum reservoirs
-            b(float): The b parameter for the QRC circuit
+            dt(float): The time step for the QRC circuit
             f_bs(List[Float]): The different feedback parameters for the quantum reservoir circuit
             ridge_param(float): The regularization parameter for the ridge regression
             use_gpu(bool): If true, use qiskit_aer gpu and cupy
         """
         super().__init__()
         self.num_qubits = num_qubits
-        self.crc_size = crc_size
         self.observables = self.observables_qrc_circuit()
-        self.circuit = self.full_circuit()
-
         self.J = self.generate_J(sigma=1.0, seed=seed)
-        self.use_gpu = use_gpu
         
-        self.train_results = []
+        self.train_features = []
         self.train_outputs = []
 
 
         self.backends = backends
-        self.pmc = [qml.QNode(self.circuit, backend) for backend in self.backends]
-
-        self.last_output = [[0] for _ in range(len(self.backends))]
+        self.qnodes = [
+            qml.QNode(self.full_circuit(num_qubits, self.J, dt=dt, f_b=fb), dev)
+            for dev, fb in zip(backends, f_bs)
+        ]
         
         self.ridge = RidgeReadout(n_qubits=self.num_qubits, alpha=ridge_param,
                                   pair=False, n_reservoirs=len(self.backends))
@@ -88,9 +86,9 @@ class QRC_Model(nn.Module):
 
         return observables
     
-    def full_circuit(self):
+    def full_circuit(self, num_qubits, J, dt, f_b):
         """Return the full qrc circuit """
-        return qrc_circuit(self.num_qubits)
+        return qrc_circuit.qrc_circuit(num_qubits, J=J, dt=dt, f_b=f_b)
 
     def calc_observables(self, samples):
         """Given the samples from the quantum reservoir, calculate all observables"""
@@ -128,59 +126,78 @@ class QRC_Model(nn.Module):
 
         return obsvs
     
-    def _warmup_and_evolution_series(self, ts_ith, n_washout=2):
-        """Warm-up roi teacher-force reservoir qua chuoi da biet.
+    def _warmup_and_evolution_series(self, residuals_ticker, n_washout=2):
+        """Warm-up roi teacher-force reservoir qua residual.
  
         Returns:
-            features: list cua f_t, voi f_t la feature SAU khi da thay ts_ith[t]
+            features: list cua f_t, voi f_t la feature SAU khi da thay ts_ticker[t]
                       (f_t dung de du doan buoc t+1).
         """
         self.reset_reservoir()
  
         # warm-up / washout: move the reservoir away from its artificial initial state
         for _ in range(n_washout):
-            _ = self.evolve_qrc(ts_ith[0])
+            _ = self.evolve_qrc(residuals_ticker[0])
  
         features = []
-        for value in ts_ith:
-            features.append(self.evolve_qrc(value))
-        return features
+        targets = []
+        for t in tqdm(range(len(residuals_ticker) - 1)):
+            features.append(self.evolve_qrc(residuals_ticker[t]))
+            targets.append(residuals_ticker[t+1])
+        return features, targets
     
     
     def train(self, x, y_HAR):
         """Evolve each set of time evolutions and train on results"""
-        ts_indices = x.shape[0]
+        ts_tickers = x.shape[0]
         y_HAR = np.asarray(y_HAR, dtype=float)
-        assert y_HAR.shape == (x.shape[0], x.shape[1] - 1), (
-            f"y_HAR phải có shape (N, T-1) = {(x.shape[0], x.shape[1] - 1)}, "
+        assert y_HAR.shape == x.shape, (
+            f"y_HAR phải có shape (N, T) = {(x.shape[0], x.shape[1])}, "
             f"nhận được {y_HAR.shape}"
         )
 
-        for idx in range(ts_indices):
-            residuals = []
-            self.last_output = deepcopy(self.initial_exp_values)
-            self.x = deepcopy(self.init_xinit)
-            ts_ith = x[idx]
-            har_ith = y_HAR[idx]
-            
-            # warm-up or washout period: move the reservoir away from its artificial initial state before training
-            self.reset_reservoir()
-            features = self._warmup_and_evolution_series(ts_ith, n_washout=2)
+        for idx in tqdm(range(ts_tickers)):
+            ts_ticker = x[idx]
+            har_ticker = y_HAR[idx]
+            # features from time 1 to T
+            residuals_ticker = ts_ticker - har_ticker
+            residual_features, residuals_targets = self._warmup_and_evolution_series(residuals_ticker, n_washout=2)
             # residual targets: e_{t+1} = y_{t+1} - y_HAR_{t+1}
-            residuals = ts_ith[1:] - har_ith
-            self.train_results += features
-            self.train_outputs += residuals.tolist()
-            
-        self.fit()
+            self.train_features += residual_features
+            self.train_outputs += residuals_targets
+            print("Session complete for ticker", idx)
 
     def fit(self):
         """Perform ridge regression on all the evolved training data"""
-        obs = np.asarray(self.train_results, dtype=float)
+        obs = np.asarray(self.train_features, dtype=float)
         y = np.asarray(self.train_outputs, dtype=float)
         self.W_out = self.ridge.weight_output(obs, y_train=y)
         return self.W_out
+    
+    
+    def forward_one_shot(self, x, y_HAR):
+        """
+        One-step-ahead over the whole series. x, y_HAR: (N, T), same-index.
+        Returns preds_log: (N, T-1) where preds_log[n, t] is the forecast of x[n, t+1],
+        aligned with x[:, 1:] and y_HAR[:, 1:].  LOG scale — caller exps.
+        """
+        x = np.asarray(x, float); y_HAR = np.asarray(y_HAR, float)
+        assert y_HAR.shape == x.shape
+        N, T = x.shape
+        preds_log = np.zeros((N, T - 1))
 
-    def forward(self, x, num_predict, y_HAR):
+        for idx in range(N):
+            residuals = x[idx] - y_HAR[idx]
+            self.reset_reservoir()
+            for _ in range(2):                                   # washout
+                self.evolve_qrc(residuals[0])
+            for t in range(T - 1):
+                f_t = np.asarray(self.evolve_qrc(residuals[t]))  # state after e_t
+                e_hat = float(self.ridge.ridge_model.predict(f_t[None, :])[0])
+                preds_log[idx, t] = y_HAR[idx, t + 1] + e_hat    # skip conn: HAR forecast OF t+1
+        return preds_log
+
+    def forward_multi_shot(self, x, num_predict, y_HAR):
         """Given a set of initial evolutions, predict num_predict time steps into the future
         
         Moi buoc:
@@ -189,36 +206,37 @@ class QRC_Model(nn.Module):
             RV_hat_{t+1}  = exp(y_final_{t+1})               # ve volatility scale
         
         """
-        ts_indices = x.shape[0]
+        ts_tickers = x.shape[0]
         y_HAR = np.asarray(y_HAR, dtype=float)
-        assert y_HAR.shape == (x.shape[0], num_predict)
+        assert y_HAR.shape == x.shape, (
+            f"y_HAR phải có shape (N, T) = {(x.shape[0], x.shape[1])}, "
+            f"nhận được {y_HAR.shape}"
+        )
 
-        all_outputs = np.zeros((ts_indices, num_predict))
+        RV_outputs = np.zeros((ts_tickers, num_predict))
 
-        for idx in range(ts_indices):
-            self.last_output = deepcopy(self.initial_exp_values)
-            self.x = deepcopy(self.init_xinit)
-            ts_ith = x[idx]
-            har_ith = y_HAR[idx]
+        for idx in range(ts_tickers):
+            ts_ticker = x[idx]
+            har_ticker = y_HAR[idx]
+            residuals_ticker = ts_ticker - har_ticker
             
             # warm-up or washout period: move the reservoir away from its artificial initial state before training
-            self.reset_reservoir()
-            features = self._warmup_and_evolution_series(ts_ith, n_washout=2)
-            feedbacks = features[-1]  # last feature vector after warm-up
+            residual_features, _ = self._warmup_and_evolution_series(residuals_ticker, n_washout=2)
+            feedbacks = np.asarray(self.evolve_qrc(residual_features[-1]))  # last feature vector after warm-up
         
             # Run prediction
             y_final_vec = []
             for step in range(num_predict):
                 # Get residual 
-                e_hat = self.ridge.predict(feedbacks)
+                e_hat = float(self.ridge.predict(feedbacks[None, :])[0])
                 # Get final output by adding HAR prediction and residual
-                y_final = e_hat + har_ith[step]
+                y_final = e_hat + har_ticker[step]
                 y_final_vec.append(y_final)
 
                 if step < num_predict - 1:
-                    # feed forecast (log scale) back into the reservoir
-                    feedbacks = self.evolve_qrc(y_final)  # update feedbacks for next step
+                    # feed residues back into the reservoir
+                    feedbacks = np.asarray(self.evolve_qrc(e_hat))  # update feedbacks for next step
 
-            all_outputs[idx] = np.exp(np.asarray(y_final_vec, dtype=float))
+            RV_outputs[idx] = np.asarray(y_final_vec, dtype=float)
             
-        return all_outputs
+        return RV_outputs
