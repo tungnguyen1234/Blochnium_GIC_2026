@@ -11,6 +11,12 @@ class QRC_Model(nn.Module):
     def __init__(self, num_qubits=0, crc_size=0, use_gpu=False, backends=None, f_bs=[0.1], b=-0.31, ridge_param=1.e-6, seed =0):
         """The Onion Classical Quantum Reservoir Computing Model
         
+        HAR + QRC residual architecture (Layer 5):
+            - HAR du doan phan chinh:      y_HAR (precomputed, truyen vao train/forward)
+            - QRC (Head A) hoc residual:   e_{t+1} = y_{t+1} - y_HAR_{t+1}
+            - Forecast cuoi (skip conn.):  y_final = y_HAR + e_hat
+            - Ve volatility scale:         RV_hat = exp(y_final)
+        
         Args:
             num_qubits (int): The number of qubits for the quantum reservoir.
             crc_size(int): The size of the classical reservoir.
@@ -36,13 +42,12 @@ class QRC_Model(nn.Module):
 
 
         self.backends = backends
-        self.pmc = []
-        for b in self.backends:
-            self.pmc.append(qml.QNode(self.circuit, b))
+        self.pmc = [qml.QNode(self.circuit, backend) for backend in self.backends]
 
         self.last_output = [[0] for _ in range(len(self.backends))]
         
-        self.ridge = RidgeReadout(n_qubits=self.num_qubits, alpha=ridge_param, pair=True)
+        self.ridge = RidgeReadout(n_qubits=self.num_qubits, alpha=ridge_param,
+                                  pair=False, n_reservoirs=len(self.backends))
 
         # Generate initial states for QRC evolution
         self.init_qrc()
@@ -102,6 +107,10 @@ class QRC_Model(nn.Module):
         self.last_output = [list(np.zeros(self.num_qubits)) for _ in range(len(self.backends))]
 
         self.initial_exp_values = deepcopy(self.last_output)
+        
+    def reset_reservoir(self):
+        """Dua reservoir ve trang thai ban dau truoc moi chuoi thoi gian."""
+        self.last_output = deepcopy(self.initial_exp_values)
 
     def evolve_qrc(self, t0):
         """Evolve the quantum reservoir given an input signal t0"""
@@ -109,10 +118,7 @@ class QRC_Model(nn.Module):
         for c, qnode in enumerate(self.qnodes):
             previous_z = self.last_output[c]
 
-            new_z = np.asarray(
-                qnode(t0, previous_z),
-                dtype=float,
-            )
+            new_z = np.asarray(qnode(t0, previous_z), dtype=float,)
 
             # These n values become memory for the next time step.
             self.last_output[c] = new_z.copy()
@@ -122,68 +128,97 @@ class QRC_Model(nn.Module):
 
         return obsvs
     
+    def _warmup_and_evolution_series(self, ts_ith, n_washout=2):
+        """Warm-up roi teacher-force reservoir qua chuoi da biet.
+ 
+        Returns:
+            features: list cua f_t, voi f_t la feature SAU khi da thay ts_ith[t]
+                      (f_t dung de du doan buoc t+1).
+        """
+        self.reset_reservoir()
+ 
+        # warm-up / washout: move the reservoir away from its artificial initial state
+        for _ in range(n_washout):
+            _ = self.evolve_qrc(ts_ith[0])
+ 
+        features = []
+        for value in ts_ith:
+            features.append(self.evolve_qrc(value))
+        return features
     
-    def train(self, x):
+    
+    def train(self, x, y_HAR):
         """Evolve each set of time evolutions and train on results"""
         ts_indices = x.shape[0]
+        y_HAR = np.asarray(y_HAR, dtype=float)
+        assert y_HAR.shape == (x.shape[0], x.shape[1] - 1), (
+            f"y_HAR phải có shape (N, T-1) = {(x.shape[0], x.shape[1] - 1)}, "
+            f"nhận được {y_HAR.shape}"
+        )
 
         for idx in range(ts_indices):
-            exp_values = []
-            output_values = []
+            residuals = []
             self.last_output = deepcopy(self.initial_exp_values)
             self.x = deepcopy(self.init_xinit)
             ts_ith = x[idx]
+            har_ith = y_HAR[idx]
             
             # warm-up or washout period: move the reservoir away from its artificial initial state before training
-            for _ in range(2):
-                _ = self.evolve_qrc(ts_ith[0])
-
-            # obtain initial reservoir state after warm-up period and the corresponding output value
-            exp_values += [self.evolve_qrc(ts_ith[0])]
-            output_values += [ts_ith[1]]
-
-            # training evolution
-            for value_next in ts_ith[2:]:
-                exp_values += [self.evolve_qrc(output_values[-1])]
-                output_values += [value_next]
-            self.train_results += exp_values
-            self.train_outputs += output_values
+            self.reset_reservoir()
+            features = self._warmup_and_evolution_series(ts_ith, n_washout=2)
+            # residual targets: e_{t+1} = y_{t+1} - y_HAR_{t+1}
+            residuals = ts_ith[1:] - har_ith
+            self.train_results += features
+            self.train_outputs += residuals.tolist()
+            
         self.fit()
 
     def fit(self):
         """Perform ridge regression on all the evolved training data"""
-        self.ridge.weight_output(self.train_results, y_train=self.train_outputs)
+        obs = np.asarray(self.train_results, dtype=float)
+        y = np.asarray(self.train_outputs, dtype=float)
+        self.W_out = self.ridge.weight_output(obs, y_train=y)
+        return self.W_out
 
-    def forward(self, x, num_predict):
-        """Given a set of initial evolutions, predict num_predict time steps into the future"""
+    def forward(self, x, num_predict, y_HAR):
+        """Given a set of initial evolutions, predict num_predict time steps into the future
+        
+        Moi buoc:
+            e_hat_{t+1}  = ridge.predict(f_t)                # Head A: residual
+            y_final_{t+1} = y_HAR_{t+1} + e_hat_{t+1}        # skip connection
+            RV_hat_{t+1}  = exp(y_final_{t+1})               # ve volatility scale
+        
+        """
         ts_indices = x.shape[0]
+        y_HAR = np.asarray(y_HAR, dtype=float)
+        assert y_HAR.shape == (x.shape[0], num_predict)
 
         all_outputs = np.zeros((ts_indices, num_predict))
-        output_values = [0.]
-        exp_values = []
+
         for idx in range(ts_indices):
             self.last_output = deepcopy(self.initial_exp_values)
             self.x = deepcopy(self.init_xinit)
             ts_ith = x[idx]
+            har_ith = y_HAR[idx]
             
             # warm-up or washout period: move the reservoir away from its artificial initial state before training
-            for _ in range(2):
-                _ = (self.evolve_qrc(ts_ith[0]))
-            exp_values += [self.evolve_qrc(ts_ith[0])]
-            output_values += [ts_ith[1]]
-            
-            # training evolution
-            for value_next in ts_ith[2:]:
-                exp_values += [self.evolve_qrc(output_values[-1])]
-                output_values += [value_next]
+            self.reset_reservoir()
+            features = self._warmup_and_evolution_series(ts_ith, n_washout=2)
+            feedbacks = features[-1]  # last feature vector after warm-up
         
-            # Fix here
-            qrc_outputs = [self.evolve_qrc(output_values[-1])]
-            test_values = []
+            # Run prediction
+            y_final_vec = []
+            for step in range(num_predict):
+                # Get residual 
+                e_hat = self.ridge.predict(feedbacks)
+                # Get final output by adding HAR prediction and residual
+                y_final = e_hat + har_ith[step]
+                y_final_vec.append(y_final)
+
+                if step < num_predict - 1:
+                    # feed forecast (log scale) back into the reservoir
+                    feedbacks = self.evolve_qrc(y_final)  # update feedbacks for next step
+
+            all_outputs[idx] = np.exp(np.asarray(y_final_vec, dtype=float))
             
-            for _ in range(num_predict-1):
-                qrc_outputs += [self.evolve_qrc(test_values[-1])]
-                test_values += []
-            all_outputs[idx, :] = test_values
-        
         return all_outputs

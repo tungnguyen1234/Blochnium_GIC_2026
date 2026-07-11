@@ -18,7 +18,8 @@ __all__ = ["RidgeReadout"]
 
 class RidgeReadout:
 
-    def __init__(self, n_qubits: int, alpha: float = 1e-6, pair = False, **ridge_kwargs):
+    def __init__(self, n_qubits: int, alpha: float = 1e-6, pair: bool = False,
+                 n_reservoirs: int = 1, **ridge_kwargs):
 
         if n_qubits < 1:
             raise ValueError("n_qubits phải >= 1")
@@ -26,10 +27,10 @@ class RidgeReadout:
         self.n_qubits = n_qubits
         self.n_single = n_qubits
         self.n_pair = n_qubits * (n_qubits - 1) // 2
-        if pair == False:
-            self.in_dim = self.n_single
-        else:
-            self.in_dim = self.n_single + self.n_pair
+        self.n_reservoirs = n_reservoirs
+ 
+        per_reservoir = self.n_single + (self.n_pair if pair else 0)
+        self.in_dim = per_reservoir * n_reservoirs
         self.ridge_model = Ridge(alpha=alpha, **ridge_kwargs)
 
     def _check_dim(self, obs: np.ndarray) -> None:
@@ -48,20 +49,33 @@ class RidgeReadout:
         Returns:
             weights của ridge regression, shape = (in_dim,)
         """
-        assert obs.shape[0] == y_train.shape[0], "Số lượng mẫu obs_train và y_train phải bằng nhau."
+        y_train = np.asarray(y_train, dtype=float).ravel()
         obs = np.asarray(obs)
+        assert obs.shape[0] == y_train.shape[0]
         self._check_dim(obs)
         self.ridge_model.fit(obs, y_train)
+        self._fitted = True
         return self.ridge_model.coef_ # W_out has dim 1 x d
     
     def predict(self, W_out, obs, time_horizon = 0):
         """
         Args:
-            obs: array-like [N, in_dim] hoặc [in_dim]
+            obs: [in_dim] (mot buoc) hoac [N, in_dim] (batch).
         Returns:
-            np.ndarray dự đoán tương ứng.
+            e^hat float neu input 1 buoc, np.ndarray [N] neu batch.
         """
-        residual = W_out @ obs[time_horizon]
+        if not self._fitted:
+            raise RuntimeError("Ridge readout chưa được fit. Hãy gọi weight_output() trước.")
+        obs = np.asarray(obs)
+        single_step = obs.ndim == 1 # Whether it is only 1 vector
+        if single_step:
+            obs = obs.reshape(1, -1)
+        else:
+            assert obs.ndim == 2
+        self._check_dim(obs)
+        residual = self.ridge_model.predict(obs)
+        if single_step:
+            return residual[0]
         return residual
         
         
@@ -90,17 +104,21 @@ if __name__ == "__main__":
     rng = np.random.default_rng(0)
     n_qubits = 6
     T_horizon = 20
-    time_horizon = 0
+    
     readout = RidgeReadout(n_qubits=n_qubits, alpha=1e-6, pair = False)
     print(readout)
     print("feature_names:", readout.feature_names())
 
     obs = rng.uniform(-1, 1, size=(T_horizon, readout.in_dim)) # this is feature vector from resevoir computing T x d
     y_train = rng.uniform(-1, 1, size=T_horizon) # Length of time horizon
+    y_HAR = y_train + rng.normal(0, 0.1, T_horizon)   # HAR forecast (precomputed)
     
-    W_out = readout.weight_output(obs, y_train)
+    # head A learns residual, not learning y directly 
+    residuals = y_train - y_HAR
+    W_out = readout.weight_output(obs, residuals)
     print("W_out:", W_out)
-    print("Residual at time t is:", readout.predict(W_out, obs, time_horizon=time_horizon))
+    
+    print("Residual at time t is:", readout.predict(obs))
     
     
     # obs_test = rng.uniform(-1, 1, size=(5, readout.in_dim))
