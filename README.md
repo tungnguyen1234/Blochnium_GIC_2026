@@ -110,6 +110,8 @@ The current asset universe consists of:
 - NVDA
 - UNH
 
+To fully test the QRC model, run: 
+`python3 QRC_test.py`
 ---
 
 # Intended Use
