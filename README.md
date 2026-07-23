@@ -1,5 +1,5 @@
 # Volatility Forecasting Dataset
-[<img src="https://qbraid-static.s3.amazonaws.com/logos/Launch_on_qBraid_white.png" width="150">](https://account.qbraid.com?gitHubUrl=<https://github.com/tungnguyen1234/Blochnium_GIC_2026>)
+[<img src="https://qbraid-static.s3.amazonaws.com/logos/Launch_on_qBraid_white.png" width="150">](https://account.qbraid.com?gitHubUrl=https://github.com/tungnguyen1234/Blochnium_GIC_2026)
 
 This dataset is constructed for **next-day volatility forecasting** and **high-volatility regime prediction** using daily OHLCV market data downloaded from Yahoo Finance.
 
