@@ -121,4 +121,12 @@ This dataset is designed for machine learning models that perform:
 - Next-day volatility forecasting (regression)
 - High-volatility regime prediction (classification)
 - Hybrid forecasting models combining classical time-series methods with Quantum Reservoir Computing (QRC)
+
+
+# Current test result
+Test-set results:
+- HAR only                 MSE: 0.6024  RMSE: 0.7762  MAE: 0.6106  QLIKE: 0.39580
+- QRC_model_1 (HAR + QRC)  MSE: 0.5948  RMSE: 0.7712  MAE: 0.6070  QLIKE: 0.38465
+- QRC_model_2              MSE: 1.3626  RMSE: 1.1673  MAE: 0.9072  QLIKE: 1.35230
+
 ```
