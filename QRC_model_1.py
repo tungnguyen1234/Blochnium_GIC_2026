@@ -1,14 +1,14 @@
 import cupy as cp    
 import numpy as np
 from itertools import combinations
-import qrc_circuit
+import qrc_circuit_1
 import torch.nn as nn
-from readout import RidgeReadout
+from QRC_readout import RidgeReadout
 import pennylane as qml
 from copy import deepcopy
 from tqdm import tqdm
         
-class QRC_Model(nn.Module):
+class QRC_Model_1(nn.Module):
     def __init__(self, num_qubits=0, backends=None, ridge_param=1.e-6, f_bs=(0.1,), dt=0.1,  seed=0):
         """The Onion Classical Quantum Reservoir Computing Model
         
@@ -80,15 +80,14 @@ class QRC_Model(nn.Module):
             mask = 1 << i
             self._int_observables[i] = mask
 
-        for i, j in combinations(range(self.num_qubits), 2):
-            mask = (1 << i) | (1 << j)
-            self._int_observables[len(self._int_observables) - 1] = mask
+        for k, (i, j) in enumerate(combinations(range(self.num_qubits), 2)):
+            self._int_observables[self.num_qubits + k] = (1 << i) | (1 << j)
 
         return observables
     
     def full_circuit(self, num_qubits, J, dt, f_b):
         """Return the full qrc circuit """
-        return qrc_circuit.qrc_circuit(num_qubits, J=J, dt=dt, f_b=f_b)
+        return qrc_circuit_1.qrc_circuit(num_qubits, J=J, dt=dt, f_b=f_b)
 
     def calc_observables(self, samples):
         """Given the samples from the quantum reservoir, calculate all observables"""

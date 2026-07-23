@@ -117,13 +117,15 @@ def evaluate(y_true_log, y_pred_log, label=""):
 
 
 ######## Train QRC by each ticker data
-from QRC_model import QRC_Model
+from QRC_model_1 import QRC_Model_1
 # Analytic (exact expectation values, no shot noise) — good for debugging
 num_qubits = 6
-f_bs = [0.1, 0.5]  # two reservoirs, two feedbacks
+n_trotter = 2
+dt = 1/ n_trotter
+f_bs = [0.1]*n_trotter  # two reservoirs, two feedbacks
 backends = [qml.device("default.qubit", wires=num_qubits) for _ in f_bs]
 W = 60  # window length
-qrc_model = QRC_Model(num_qubits=num_qubits, backends=backends, f_bs=f_bs, dt=0.1, ridge_param=1.e-6, seed=0)
+qrc_model = QRC_Model_1(num_qubits=num_qubits, backends=backends, f_bs=f_bs, dt=0.1, ridge_param=1.e-6, seed=0)
 X_train = get_HAR(train) 
 X_test = get_HAR(test)
 x_train, yhar_train, _, tickers = build_qrc_data_by_tickers(X_train)
