@@ -28,6 +28,7 @@ The dataset supports two prediction tasks:
 | **split** | Dataset partition used in experiments (`train` or `test`). |
 
 ---
+[<img src="https://qbraid-static.s3.amazonaws.com/logos/Launch_on_qBraid_white.png" width="150">](https://account.qbraid.com?gitHubUrl=<https://github.com/tungnguyen1234/Blochnium_GIC_2026>)
 
 # Target Variables
 
@@ -125,8 +126,8 @@ This dataset is designed for machine learning models that perform:
 
 # Current test result
 Test-set results:
-- HAR only                 MSE: 0.6024  RMSE: 0.7762  MAE: 0.6106  QLIKE: 0.39580
-- QRC_model_1 (HAR + QRC)  MSE: 0.5948  RMSE: 0.7712  MAE: 0.6070  QLIKE: 0.38465
-- QRC_model_2              MSE: 1.3626  RMSE: 1.1673  MAE: 0.9072  QLIKE: 1.35230
+- HAR only                       MSE: 0.6024  RMSE: 0.7762  MAE: 0.6106  QLIKE: 0.39580
+- QRC_model_1 (HAR + QRC)        MSE: 0.5948  RMSE: 0.7712  MAE: 0.6070  QLIKE: 0.38465
+- QRC_model_2 (5 qb features)    MSE: 1.3626  RMSE: 1.1673  MAE: 0.9072  QLIKE: 1.35230
 
 ```
