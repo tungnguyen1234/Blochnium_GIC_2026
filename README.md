@@ -99,19 +99,6 @@ results/phase3_summary.csv
 results/connected_transition_summary.csv
 ```
 
-### What this file does
-
-`QRC_run_qbraid.py` runs the primary Phase 3 visualizations. It:
-
-- Loads and prepares the financial volatility dataset
-- Creates leakage-safe training and test samples
-- Fits the HAR baseline
-- Runs the QRC reservoir using a simulator
-- Trains the ridge readout
-- Produces final HAR+QRC forecasts
-- Evaluates QRC and classical comparison models
-- Saves or prints benchmark metrics and prediction outputs
-
 # Target Variables
 
 ## Regression Target
