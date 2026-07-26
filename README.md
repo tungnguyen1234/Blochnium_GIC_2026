@@ -30,8 +30,7 @@ The dataset supports two prediction tasks:
 
 # Instruction
 
-## Local GPU run
-After clicking on launch Qbraid, simulation results can be run with `python3 QRC_test.py`
+
 
 <!-- Real qBraid quantum computer can be run with this notebook via qBraid instance `QRC_test_qbraid_notebook.ipynb` -->
 
@@ -59,24 +58,39 @@ The project requires a Python environment with packages for:
 - Qiskit circuit construction and execution
 - qBraid quantum backend access
 
-### 3. Confirm required files
-
-Before running the experiments, confirm that the repository contains:
-
-```text
-phase3_experiments.py
-train_sim_then_qbraid_readout.py
-requirements.txt
+## Experiment 1: Local GPU run
+After clicking on launch Qbraid, simulation results can be run with 
+```bash
+python3 QRC_run_local.py
 ```
 
-Also confirm that the processed dataset and imported project modules are available at the paths expected by the scripts.
-
-## Experiment: Full Simulator Benchmark
+## Experiment 2: Full QPU Rigetti Benchmark
 
 Run:
 
 ```bash
-python3 QRC_qbraid_visualization.py
+cd Blochnium_GIC_2026
+
+export OPENBLAS_NUM_THREADS=1 
+export OMP_NUM_THREADS=1 
+export MKL_NUM_THREADS=1 
+export NUMEXPR_NUM_THREADS=1 
+
+python3 transition/QRC_run_qbraid.py \
+  --n-reservoirs 1 \
+  --eval-rows 100 \
+  --transition-size 10 \
+  --shots 100
+```
+
+Main outputs and visualizations are:
+
+```text
+transition/results/qrc_model1_connected/SPY_qrc_model1_spy_only_metrics.csv
+transition/results/qrc_model1_connected/SPY_qrc_model1_spy_only_predictions.csv
+transition/figs/qrc_model1_connected/SPY_qrc_model1_spy_only.png
+transition/results/phase3_summary.csv
+transition/results/connected_transition_summary.csv
 ```
 
 ### What this file does
@@ -175,10 +189,3 @@ This dataset is designed for machine learning models that perform:
 - Next-day volatility forecasting (regression)
 - High-volatility regime prediction (classification)
 - Hybrid forecasting models combining classical time-series methods with Quantum Reservoir Computing (QRC)
-
-
-# Current test result
-Test-set results:
-- HAR only                       MSE: 0.6024  RMSE: 0.7762  MAE: 0.6106  QLIKE: 0.39580
-- QRC_model_1 (HAR + QRC)        MSE: 0.5948  RMSE: 0.7712  MAE: 0.6070  QLIKE: 0.38465
-- QRC_model_2 (5 qb features)    MSE: 1.3626  RMSE: 1.1673  MAE: 0.9072  QLIKE: 1.35230
