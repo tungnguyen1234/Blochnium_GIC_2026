@@ -1,16 +1,15 @@
-import cupy as cp    
 import numpy as np
 from itertools import combinations
-import qrc_circuit_1
+import models.qrc_circuit as qrc_circuit
 import torch.nn as nn
-from QRC_readout import RidgeReadout
+from models.QRC_readout import RidgeReadout
 import pennylane as qml
 from copy import deepcopy
 from tqdm import tqdm
         
-class QRC_Model_1(nn.Module):
+class QRC_Model(nn.Module):
     def __init__(self, num_qubits=0, backends=None, ridge_param=1.e-6, f_bs=(0.1,), dt=0.1,  seed=0):
-        """The Onion Classical Quantum Reservoir Computing Model
+        """The Quantum Reservoir Computing Model
         
         HAR + QRC residual architecture (Layer 5):
             - HAR du doan phan chinh:      y_HAR (precomputed, truyen vao train/forward)
@@ -87,7 +86,7 @@ class QRC_Model_1(nn.Module):
     
     def full_circuit(self, num_qubits, J, dt, f_b):
         """Return the full qrc circuit """
-        return qrc_circuit_1.qrc_circuit(num_qubits, J=J, dt=dt, f_b=f_b)
+        return qrc_circuit.qrc_circuit(num_qubits, J=J, dt=dt, f_b=f_b)
 
     def calc_observables(self, samples):
         """Given the samples from the quantum reservoir, calculate all observables"""
@@ -134,7 +133,7 @@ class QRC_Model_1(nn.Module):
         """
         self.reset_reservoir()
  
-        # warm-up / washout: move the reservoir away from its artificial initial state
+        # warm-up or washout: move the reservoir away from its artificial initial state
         for _ in range(n_washout):
             _ = self.evolve_qrc(residuals_ticker[0])
  
@@ -188,12 +187,15 @@ class QRC_Model_1(nn.Module):
         for idx in range(N):
             residuals = x[idx] - y_HAR[idx]
             self.reset_reservoir()
-            for _ in range(2):                                   # washout
+            # washout
+            for _ in range(2):                                   
                 self.evolve_qrc(residuals[0])
             for t in range(T - 1):
-                f_t = np.asarray(self.evolve_qrc(residuals[t]))  # state after e_t
+                # state after e_t
+                f_t = np.asarray(self.evolve_qrc(residuals[t]))  
                 e_hat = float(self.ridge.ridge_model.predict(f_t[None, :])[0])
-                preds_log[idx, t] = y_HAR[idx, t + 1] + e_hat    # skip conn: HAR forecast OF t+1
+                # skip conn: HAR forecast OF t+1
+                preds_log[idx, t] = y_HAR[idx, t + 1] + e_hat    
         return preds_log
 
     def forward_multi_shot(self, x, num_predict, y_HAR):

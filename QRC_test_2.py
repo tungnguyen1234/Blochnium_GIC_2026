@@ -14,7 +14,6 @@ Pipeline:
 """
 
 import os
-
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.dates as mdates
@@ -24,7 +23,7 @@ import pandas as pd
 import pennylane as qml
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
-from QRC_model_2 import QRC_Model_2
+from models.QRC_model_2 import QRC_Model_2
 
 # =====================================================================
 # Config

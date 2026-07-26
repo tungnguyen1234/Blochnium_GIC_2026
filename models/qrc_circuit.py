@@ -2,7 +2,7 @@ import warnings
 import pennylane as qml
 import numpy as np
 
-# Ignore the DeprecationWarnings coming from qiskit EfficientSU2 that can not be avoided.
+# Ignore the DeprecationWarnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 def qrc_circuit(num_qubits, J, dt=0.1, f_b=0.1, n_trotter=2):
@@ -26,7 +26,7 @@ def qrc_circuit(num_qubits, J, dt=0.1, f_b=0.1, n_trotter=2):
         for i in range(1, num_qubits):
             qml.RY(feedback_angles[i - 1], wires=i,)
 
-        # Layers 2..k: alternate coupling + transverse rotation
+        # Layers 2 to k: alternate coupling and transverse rotation
         for _ in range(n_trotter):        
             for i, j in edges:
                 qml.IsingZZ(2.0 * J[i, j] * dt, wires=[i, j])
@@ -49,7 +49,5 @@ if __name__ == "__main__":
     num_steps = 2
     params = rng.uniform(0, 1, num_qubits)
     J = rng.uniform(-1, 1, size=(num_qubits, num_qubits))
-    
-
     circuit = qrc_circuit(num_qubits, t, num_steps, params=params, J=J)
     

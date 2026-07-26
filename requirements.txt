@@ -1,8 +1,8 @@
-cupy-cuda12x
 pennylane
 torch 
-numpy
+numpy==2.4.0
 yfinance
 pandas_datareader
 statsmodels
 scikit-learn
+tqdm
