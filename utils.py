@@ -4,7 +4,6 @@ import matplotlib.dates as mdates
 import numpy as np
 import statsmodels.api as sm
 
-
 # -----------------------------
 # 3. HAR model function
 # -----------------------------
