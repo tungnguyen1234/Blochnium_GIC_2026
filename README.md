@@ -64,6 +64,12 @@ After clicking on launch Qbraid, simulation results can be run with
 python3 QRC_run_local.py
 ```
 
+Main outputs and visualizations are:
+
+```text
+figs/HAR_vs_QRC_{ticker_id}.png
+```
+
 ## Experiment 2: Full QPU Rigetti Benchmark
 
 Run:
@@ -76,7 +82,7 @@ export OMP_NUM_THREADS=1
 export MKL_NUM_THREADS=1 
 export NUMEXPR_NUM_THREADS=1 
 
-python3 transition/QRC_run_qbraid.py \
+python3 QRC_run_qbraid.py \
   --n-reservoirs 1 \
   --eval-rows 100 \
   --transition-size 10 \
@@ -86,16 +92,16 @@ python3 transition/QRC_run_qbraid.py \
 Main outputs and visualizations are:
 
 ```text
-transition/results/qrc_model1_connected/SPY_qrc_model1_spy_only_metrics.csv
-transition/results/qrc_model1_connected/SPY_qrc_model1_spy_only_predictions.csv
-transition/figs/qrc_model1_connected/SPY_qrc_model1_spy_only.png
-transition/results/phase3_summary.csv
-transition/results/connected_transition_summary.csv
+results/qrc_model1_connected/SPY_qrc_model1_spy_only_metrics.csv
+results/qrc_model1_connected/SPY_qrc_model1_spy_only_predictions.csv
+figs/qrc_model1_connected/SPY_qrc_model1_spy_only.png
+results/phase3_summary.csv
+results/connected_transition_summary.csv
 ```
 
 ### What this file does
 
-`QRC_qbraid_visualization.py` runs the primary Phase 3 visualizations. It:
+`QRC_run_qbraid.py` runs the primary Phase 3 visualizations. It:
 
 - Loads and prepares the financial volatility dataset
 - Creates leakage-safe training and test samples

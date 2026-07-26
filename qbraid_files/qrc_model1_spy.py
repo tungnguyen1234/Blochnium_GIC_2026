@@ -1,4 +1,4 @@
-"""Reproduce the old QRC_Model_1 experiment for SPY only."""
+"""Reproduce the old QRC_Model experiment for SPY only."""
 
 from __future__ import annotations
 
@@ -18,7 +18,6 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 import matplotlib
-
 matplotlib.use("Agg")
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
@@ -28,7 +27,7 @@ import pennylane as qml
 import statsmodels.api as sm
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
-from QRC_model_1 import QRC_Model_1
+from models.QRC_model import QRC_Model
 
 
 def add_har_features(frame: pd.DataFrame) -> pd.DataFrame:
@@ -102,7 +101,7 @@ def plot_predictions(results: pd.DataFrame, out_path: Path, title: str):
         color="seagreen",
         lw=1.2,
         alpha=0.9,
-        label=f"HAR+QRC_Model_1 (QLIKE {qlike(results.y_true, results.y_qrc):.3f})",
+        label=f"HAR+QRC_Model (QLIKE {qlike(results.y_true, results.y_qrc):.3f})",
     )
     ax.set_ylabel("log RV")
     ax.set_xlabel("Date")
@@ -155,7 +154,7 @@ def main():
         qml.device("default.qubit", wires=args.num_qubits)
         for _ in range(args.n_reservoirs)
     ]
-    qrc_model = QRC_Model_1(
+    qrc_model = QRC_Model(
         num_qubits=args.num_qubits,
         backends=backends,
         f_bs=[args.f_b] * args.n_reservoirs,
@@ -192,12 +191,12 @@ def main():
     out_metrics = args.results_dir / f"{args.ticker}_qrc_model1_spy_only_metrics.csv"
     results.to_csv(out_csv, index=False)
     pd.DataFrame.from_dict(
-        {"HAR": har_metrics, "HAR+QRC_Model_1": qrc_metrics},
+        {"HAR": har_metrics, "HAR+QRC_Model": qrc_metrics},
         orient="index",
     ).to_csv(out_metrics)
 
     out_fig = args.fig_dir / f"{args.ticker}_qrc_model1_spy_only.png"
-    plot_predictions(results, out_fig, f"{args.ticker} -- QRC_Model_1 SPY-only test forecasts")
+    plot_predictions(results, out_fig, f"{args.ticker} -- QRC_Model SPY-only test forecasts")
     print(f"Saved predictions: {out_csv}")
     print(f"Saved metrics:     {out_metrics}")
     print(f"Saved figure:      {out_fig}")

@@ -28,8 +28,8 @@ REPO_ROOT = THIS_DIR.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from qbraid_utils import build_qrc_circuit, generate_j
-from QRC_train_qbraid import (
+from qbraid_files.qbraid_utils import build_qrc_circuit, generate_j
+from QRC_run_qbraid import (
     add_har,
     add_targets,
     anchored_transition,
