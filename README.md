@@ -29,9 +29,7 @@ The dataset supports two prediction tasks:
 | **regime_threshold** | Quantile threshold $q_\alpha$ used to define the high-volatility regime. The threshold is computed **only from the training set** to prevent data leakage. | -->
 
 # Instruction
-After clicking on launch Qbraid, simulation results can be run with
-
-`python3 QRC_test.py`
+After clicking on launch Qbraid, simulation results can be run with `python3 QRC_test.py`
 
 Real qBraid quantum computer can be run with this notebook via qBraid instance `QRC_test_qbraid_notebook.ipynb`
 
