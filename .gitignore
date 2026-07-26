@@ -2,8 +2,8 @@
 /qrc_dataset.csv
 /testing_yfinance.py
 __pycache__/yfinance.cpython-312.pyc
-./Classical-Quantum-Reservoir-Computing.ipynb
+Classical-Quantum-Reservoir-Computing.ipynb
 figs
 models/qrc_circuit_2.py
 models/QRC_model_2.py
-models/QRC_test_2.py
+QRC_test_2.py
