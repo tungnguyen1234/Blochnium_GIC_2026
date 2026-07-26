@@ -29,9 +29,68 @@ The dataset supports two prediction tasks:
 | **regime_threshold** | Quantile threshold $q_\alpha$ used to define the high-volatility regime. The threshold is computed **only from the training set** to prevent data leakage. | -->
 
 # Instruction
+
+## Local GPU run
 After clicking on launch Qbraid, simulation results can be run with `python3 QRC_test.py`
 
-Real qBraid quantum computer can be run with this notebook via qBraid instance `QRC_test_qbraid_notebook.ipynb`
+<!-- Real qBraid quantum computer can be run with this notebook via qBraid instance `QRC_test_qbraid_notebook.ipynb` -->
+
+## Setup on qBraid
+
+### 1. Launch the repository
+
+Click the **Launch on qBraid** button above.
+
+The GitHub repository must be public for the launch button to clone it automatically.
+
+### 2. Open a terminal
+
+From the repository root, install the required dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+The project requires a Python environment with packages for:
+
+- Numerical and tabular processing
+- Classical machine learning
+- Financial data processing
+- Qiskit circuit construction and execution
+- qBraid quantum backend access
+
+### 3. Confirm required files
+
+Before running the experiments, confirm that the repository contains:
+
+```text
+phase3_experiments.py
+train_sim_then_qbraid_readout.py
+requirements.txt
+```
+
+Also confirm that the processed dataset and imported project modules are available at the paths expected by the scripts.
+
+## Experiment: Full Simulator Benchmark
+
+Run:
+
+```bash
+python3 QRC_qbraid_visualization.py
+```
+
+### What this file does
+
+`QRC_qbraid_visualization.py` runs the primary Phase 3 visualizations. It:
+
+- Loads and prepares the financial volatility dataset
+- Creates leakage-safe training and test samples
+- Fits the HAR baseline
+- Runs the QRC reservoir using a simulator
+- Trains the ridge readout
+- Produces final HAR+QRC forecasts
+- Evaluates QRC and classical comparison models
+- Saves or prints benchmark metrics and prediction outputs
 
 # Target Variables
 
