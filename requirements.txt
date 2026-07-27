@@ -6,3 +6,4 @@ pandas_datareader
 statsmodels
 scikit-learn
 tqdm
+matplotlib

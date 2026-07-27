@@ -72,12 +72,16 @@ figs/HAR_vs_QRC_{ticker_id}.png
 
 ## Experiment 2: Full QPU Rigetti Benchmark
 
-Run the following commands
+When clicking `Launch QBraid`, open the Terminal and run the following commands to setup the environments
+
+```bash
+cd Blochnium_GIC_2026/
+pip3 install -r requirements.txt
+```
 
 ### Step 1: Calling API/QPU to obtain dataset using 5Qubit
 
 ```bash
-cd Blochnium_GIC_2026/
 QBRAID_API_KEY="..." OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 \
 python3 QRC_train_test_qbraid.py \
   --eval-feature-backend qbraid \
@@ -105,11 +109,22 @@ python3 QRC_train_test_qbraid.py \
 
 ```bash
 OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 \
-python3 QRC_visualization_qbraid.py \
+python3 QRC_main_qbraid.py \
   --skip-qrc-model1 \
   --eval-rows 100 \
   --transition-size 20 \
   --shots 100
+```
+
+Main outputs include
+
+```text
+results/connected_transition_summary.csv
+results/phase3_summary.csv
+results/phase3_5q_predictions.csv
+results/phase3_5q_train_predictions.csv
+results/phase3_10q_predictions.csv
+results/phase3_10q_train_predictions.csv
 ```
 
 # Target Variables
