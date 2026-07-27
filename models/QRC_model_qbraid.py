@@ -24,7 +24,7 @@ import numpy as np
 from qiskit import QuantumCircuit
 from tqdm import tqdm
 
-from QRC_readout import RidgeReadout
+from models.QRC_readout import RidgeReadout
 
 
 class QRC_Model_QBraid:

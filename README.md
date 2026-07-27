@@ -72,31 +72,44 @@ figs/HAR_vs_QRC_{ticker_id}.png
 
 ## Experiment 2: Full QPU Rigetti Benchmark
 
-Run:
+Run the following commands
+
+### Step 1: Calling API/QPU to obtain dataset using 5Qubit
 
 ```bash
-cd Blochnium_GIC_2026
-
-export OPENBLAS_NUM_THREADS=1 
-export OMP_NUM_THREADS=1 
-export MKL_NUM_THREADS=1 
-export NUMEXPR_NUM_THREADS=1 
-
-python3 QRC_run_qbraid.py \
-  --n-reservoirs 1 \
+cd Blochnium_GIC_2026/
+QBRAID_API_KEY="..." OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 \
+python3 QRC_train_test_qbraid.py \
+  --eval-feature-backend qbraid \
+  --qbraid-device-id aws:rigetti:qpu:cepheus-1-108q \
+  --num-qubits 5 \
   --eval-rows 100 \
-  --transition-size 10 \
-  --shots 100
+  --transition-size 20 \
+  --qbraid-shots 100
 ```
 
-Main outputs and visualizations are:
+### Step 2: Calling API/QPU to obtain dataset using 10Qubit
 
-```text
-results/qrc_model1_connected/SPY_qrc_model1_spy_only_metrics.csv
-results/qrc_model1_connected/SPY_qrc_model1_spy_only_predictions.csv
-figs/qrc_model1_connected/SPY_qrc_model1_spy_only.png
-results/phase3_summary.csv
-results/connected_transition_summary.csv
+```bash
+QBRAID_API_KEY="..." OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 \
+python3 QRC_train_test_qbraid.py \
+  --eval-feature-backend qbraid \
+  --qbraid-device-id aws:rigetti:qpu:cepheus-1-108q \
+  --num-qubits 10 \
+  --eval-rows 100 \
+  --transition-size 20 \
+  --qbraid-shots 100
+```
+
+### Step 3: Using dataset QPU has obtained to train/adapt results from both 5Qubit and 10Qubit and visualize their 
+
+```bash
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 \
+python3 QRC_visualization_qbraid.py \
+  --skip-qrc-model1 \
+  --eval-rows 100 \
+  --transition-size 20 \
+  --shots 100
 ```
 
 # Target Variables
