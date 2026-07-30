@@ -1,6 +1,9 @@
-# Volatility Forecasting Dataset
+# Blochnium - Ising-Field Quantum Reservoir Computing for Next-Day Volatility Forecasting - qBraid, MITRE & JonesTrading Track GIC 2026
+
 [<img src="https://qbraid-static.s3.amazonaws.com/logos/Launch_on_qBraid_white.png" width="150">](https://account.qbraid.com?gitHubUrl=https://github.com/tungnguyen1234/Blochnium_GIC_2026)
 
+
+# Dataset Columns
 This dataset is constructed for **next-day volatility forecasting** and **high-volatility regime prediction** using daily OHLCV market data downloaded from Yahoo Finance.
 
 The dataset supports two prediction tasks:
@@ -8,9 +11,6 @@ The dataset supports two prediction tasks:
 1. **Regression**: Predict next-day log realized variance.
 2. **Classification**: Predict whether the next trading day belongs to a high-volatility regime.
 
----
-
-# Dataset Columns
 
 | Column | Description |
 |---------|-------------|
